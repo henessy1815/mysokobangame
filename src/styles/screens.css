@@ -1,0 +1,807 @@
+/* 화면별 레이아웃: 시작 / 단계 선택 / 게임 / 오버레이. 세로 화면이 기준이다. */
+
+/* ---------- 시작 화면 ---------- */
+
+.screen--title {
+  justify-content: center;
+  gap: 8px;
+}
+
+.title-art {
+  position: relative;
+  flex: 0 1 240px;
+  min-height: 140px;
+  display: grid;
+  place-items: center;
+}
+
+.title-art svg {
+  width: min(100%, 360px);
+  height: auto;
+}
+
+.title-art__glow {
+  position: absolute;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 184, 92, 0.3), transparent 68%);
+  animation: torch-flicker 3.4s ease-in-out infinite;
+}
+
+.title-art__cave {
+  fill: var(--wall);
+  opacity: 0.55;
+}
+
+.title-art__crate {
+  fill: var(--crate);
+  stroke: var(--crate-dark);
+  stroke-width: 2;
+}
+
+.title-art__crate-mark {
+  fill: var(--goal);
+  opacity: 0.85;
+}
+
+.title-body {
+  flex: 0 0 auto;
+  text-align: center;
+  padding-bottom: 8px;
+}
+
+/*
+ * 자간을 벌린 눈썹 라벨("동굴의 상자")을 없앴다. 제목 위에 작은 띠를 얹는 건
+ * 어느 앱에나 있는 기본값인데다, 여기서는 바로 아래 한 줄 설명이 같은 말을
+ * 이미 하고 있었다. 한 번만 말하면 된다.
+ */
+.title-name {
+  margin: 0 0 8px;
+  font-size: clamp(38px, 12vw, 56px);
+  letter-spacing: 0.04em;
+}
+
+.title-tagline {
+  margin: 0 0 24px;
+  color: var(--ink-dim);
+  font-size: 14px;
+}
+
+.title-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.title-actions .button {
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 20px;
+}
+
+/* ---------- 단계 선택 ---------- */
+
+.screen-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+
+.screen-header h1 {
+  flex: 1;
+  font-size: 20px;
+}
+
+.screen-header__meta {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.select-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.chapter + .chapter {
+  margin-top: 20px;
+}
+
+.chapter__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+.chapter__title span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * 단계 카드 = 궤짝 뚜껑.
+ *
+ * 왼쪽 쇠테(::before)가 경첩 자리를 잡아 카드에 방향을 준다. 똑같이 둥근 상자
+ * 열 개가 아니라 쌓여 있는 궤짝으로 읽히게 하는 건 이 한 줄이다.
+ */
+.level-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-height: 92px;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  background: var(--plank-face);
+  box-shadow: var(--plank-edge);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 120ms ease, filter 160ms ease;
+}
+
+.level-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  border-radius: 5px 0 0 5px;
+  background: linear-gradient(90deg, #6d6355, #443d34);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.16);
+}
+
+.level-card:hover:not(:disabled) {
+  filter: brightness(1.14);
+}
+
+.level-card:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.level-card:disabled {
+  background: linear-gradient(180deg, #2e2a26, #1d1a17);
+  border-color: rgba(0, 0, 0, 0.45);
+  cursor: default;
+}
+
+.level-card:disabled::before {
+  background: linear-gradient(90deg, #3a3631, #26231f);
+}
+
+/* 지금 도전할 단계는 횃불색으로 짚어 준다. 켜자마자 어디를 눌러야 할지 보여야 한다. */
+.level-card.is-next {
+  box-shadow:
+    var(--plank-edge),
+    0 0 0 2px rgba(255, 184, 92, 0.55),
+    0 0 16px rgba(255, 184, 92, 0.25);
+}
+
+/* 깬 판은 나무가 그을리고, 뚜껑에 표식이 지져진다. */
+.level-card.is-cleared {
+  background: var(--plank-burnt);
+}
+
+.level-card.is-cleared::after {
+  content: '';
+  position: absolute;
+  right: 9px;
+  top: 10px;
+  width: 9px;
+  height: 9px;
+  background: var(--goal);
+  box-shadow: 0 0 8px var(--goal-glow);
+  transform: rotate(45deg);
+}
+
+.level-card__number {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--wood-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.level-card__title {
+  flex: 1;
+  font-size: 12px;
+  color: #cdae86;
+  overflow-wrap: anywhere;
+}
+
+.level-card__status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #a4855f;
+  font-size: 11px;
+}
+
+.level-card__status em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.level-card__status svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.level-card.is-cleared .level-card__status {
+  color: var(--goal);
+}
+
+.level-card:disabled .level-card__number {
+  color: #6c6258;
+}
+
+.level-card:disabled .level-card__title,
+.level-card:disabled .level-card__status {
+  color: #5b534a;
+}
+
+/* ---------- 게임 ---------- */
+
+.screen--game {
+  gap: 6px;
+}
+
+.game-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/*
+ * 단계 번호 낙인.
+ *
+ * 자간을 벌린 "3단계" 대신 나무판에 찍힌 숫자 하나. 라벨을 읽지 않아도
+ * 어디쯤 왔는지 알 수 있고, 제목과 크기로 경쟁하지 않는다.
+ */
+.level-brand {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 5px;
+  background: linear-gradient(180deg, var(--crate-lit), var(--crate) 55%, var(--crate-dark));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 1px 3px rgba(0, 0, 0, 0.55);
+  color: #2b1908;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-header__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.game-header__title h1 {
+  font-size: 17px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * 계기판 = 판자 한 장에 리벳 두 개.
+ *
+ * 1px 구분선으로 네 값을 똑같이 나열하던 자리다. 그러면 무엇을 봐야 하는지
+ * 화면이 말해 주지 않는다. 판 중에 계속 변하는 값(이동 수)만 크게 두고 나머지는
+ * 곁들인다. 최고 기록은 판 밖으로 뺐다 — 판 중에는 바뀌지 않는 값이다.
+ */
+.game-plate {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 0 0 auto;
+  margin-top: 4px;
+  padding: 9px 20px;
+  border-radius: 7px;
+  background: var(--plank-face);
+  box-shadow: var(--plank-edge), 0 2px 5px rgba(0, 0, 0, 0.45);
+}
+
+.game-plate::before,
+.game-plate::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 50%;
+  background: var(--rivet);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.game-plate::before {
+  left: 7px;
+}
+
+.game-plate::after {
+  right: 7px;
+}
+
+.game-plate__moves {
+  margin: 0;
+  color: var(--wood-ink);
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-plate__moves span {
+  margin-left: 3px;
+  color: var(--wood-ink-dim);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/*
+ * 주운 사과 수.
+ * key가 바뀌며 새로 마운트되므로 숫자가 올라갈 때마다 애니메이션이 한 번씩 돈다.
+ */
+.game-plate__apple {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffd7b0;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-plate__apple .sprite--apple {
+  display: block;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  animation: none;
+  filter: none;
+}
+
+.game-plate__apple.is-bumped {
+  animation: apple-bump 420ms cubic-bezier(0.34, 1.56, 0.5, 1);
+}
+
+@keyframes apple-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/*
+ * 상자 진행.
+ *
+ * "상자 2 / 3"이라는 나눗셈 대신 궤짝 위 표식과 같은 마름모가 하나씩 켜진다.
+ * 숫자를 읽지 않아도 남은 개수가 세어지고, 격자에서 찾아야 할 모양과 계기판의
+ * 모양이 같아진다.
+ */
+.game-plate__pips {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.game-plate__pips i {
+  width: 11px;
+  height: 11px;
+  background: rgba(0, 0, 0, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transform: rotate(45deg);
+  transition: background 200ms var(--move-ease), box-shadow 200ms var(--move-ease);
+}
+
+.game-plate__pips i.is-set {
+  background: var(--goal);
+  box-shadow: 0 0 7px var(--goal-glow);
+}
+
+.game-best {
+  flex: 0 0 auto;
+  margin: 6px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 힌트는 나무 조각에 적어 붙인 쪽지. 둥근 알약 대신 왼쪽에 결만 남긴다. */
+.game-hint {
+  flex: 0 0 auto;
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--crate);
+  border-radius: 0 5px 5px 0;
+  background: rgba(192, 128, 63, 0.13);
+  color: #e8c79b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.board-area {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 10px 0;
+  touch-action: none;
+}
+
+.game-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  /* 넓은 화면에서 좌우 버튼이 양 끝으로 날아가지 않게 묶어 둔다. */
+  max-width: 460px;
+  margin: 0 auto;
+  padding-top: 6px;
+}
+
+.button--control {
+  flex-direction: column;
+  gap: 4px;
+  min-width: 68px;
+  min-height: 68px;
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-dim);
+}
+
+.button--control svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ---------- 방향 버튼 ---------- */
+
+.dpad {
+  display: grid;
+  grid-template-areas:
+    '.    up    .'
+    'left hub   right'
+    '.    down  .';
+  grid-template-columns: repeat(3, 54px);
+  grid-template-rows: repeat(3, 54px);
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.dpad__button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--iron-line);
+  border-radius: 9px;
+  background: var(--iron-face);
+  box-shadow: var(--iron-edge);
+  color: #d8cbba;
+  cursor: pointer;
+  touch-action: none;
+  transition: background 120ms ease, transform 100ms ease, box-shadow 120ms ease;
+}
+
+/* 눌린 철판은 하이라이트가 사라지고 안쪽으로 들어간다. */
+.dpad__button:active:not(:disabled) {
+  background: linear-gradient(180deg, #3a3530, #262320);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.55);
+  transform: scale(0.96);
+  color: var(--accent);
+}
+
+.dpad__button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.dpad__button svg {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+  stroke: none;
+}
+
+/* 가운데는 파인 자리. 엄지가 쉬는 곳이라 튀어나오면 안 된다. */
+.dpad__hub {
+  grid-area: hub;
+  margin: 12px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.07);
+}
+
+@media (max-width: 360px) {
+  .dpad {
+    grid-template-columns: repeat(3, 48px);
+    grid-template-rows: repeat(3, 48px);
+  }
+
+  .button--control {
+    min-width: 58px;
+    min-height: 58px;
+  }
+}
+
+/* ---------- 오버레이 (클리어 결과 · 설정) ---------- */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 5, 4, 0.7);
+  backdrop-filter: blur(3px);
+  animation: overlay-in 220ms ease-out;
+}
+
+.overlay__panel {
+  width: min(100%, 360px);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 24px 22px;
+  text-align: center;
+}
+
+/* 뚜껑 위쪽 리벳 두 개. 한 쌍이면 충분하다. */
+.panel::before,
+.panel::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--rivet);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.panel::before {
+  left: 10px;
+}
+
+.panel::after {
+  right: 10px;
+}
+
+.overlay__title {
+  margin: 0;
+  color: var(--wood-ink);
+  font-size: 21px;
+}
+
+.overlay__sub {
+  margin: 2px 0 0;
+  color: var(--wood-ink-dim);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 결과는 숫자 하나가 전부다. 3칸 통계 그리드는 세 값을 똑같이 크게 만들어
+ * 무엇이 이번 판의 성적인지 흐려 놓는다. 이동 수만 크게 두고, 견줄 값은
+ * 아래 두 줄로 내린다.
+ */
+.overlay__moves {
+  margin: 16px 0 0;
+  color: var(--wood-ink);
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.overlay__moves span {
+  margin-left: 5px;
+  color: var(--wood-ink-dim);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.overlay__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 5px 12px;
+  border-radius: 3px;
+  background: rgba(127, 227, 208, 0.16);
+  color: var(--goal);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.facts {
+  margin: 20px 0 22px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 9px 2px;
+  border-top: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.facts dt {
+  color: var(--wood-ink-dim);
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--wood-ink);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.overlay__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- 설정 ---------- */
+
+.settings-list {
+  margin: 18px 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.settings-list li + li {
+  margin-top: 6px;
+}
+
+/* 나무 위에 파 넣은 홈. 판 위에 또 판을 얹지 않는다. */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+  color: var(--wood-ink);
+  cursor: pointer;
+}
+
+.toggle__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.toggle__text small {
+  color: var(--wood-ink-dim);
+  font-size: 12px;
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle__track {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 27px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition: background 180ms ease;
+}
+
+.toggle__thumb {
+  display: block;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: #9a8b79;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: transform 180ms cubic-bezier(0.3, 1.4, 0.5, 1), background 180ms ease;
+}
+
+.toggle input:checked + .toggle__track {
+  background: rgba(255, 184, 92, 0.42);
+}
+
+.toggle input:checked + .toggle__track .toggle__thumb {
+  transform: translateX(19px);
+  background: var(--accent);
+}
+
+.toggle input:focus-visible + .toggle__track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.settings-danger {
+  margin-bottom: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+  color: var(--wood-ink-dim);
+}
+
+.settings-danger p {
+  margin: 0 0 10px;
+}
+
+.settings-danger__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-keys {
+  margin: 16px 0 0;
+  color: var(--wood-ink-dim);
+  font-size: 11px;
+  line-height: 1.7;
+  opacity: 0.8;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

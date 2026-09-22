@@ -1,0 +1,342 @@
+/*
+ * 기본 토큰과 공통 요소.
+ *
+ * 동굴 색조는 챕터(깊이)마다 달라진다. .app[data-chapter]에서 토큰만 갈아끼우면
+ * 격자·버튼·배경이 한꺼번에 따라 바뀐다.
+ *
+ * 다만 퍼즐 가독성이 분위기보다 먼저다. 어느 챕터에서도 벽·바닥·상자·목표의
+ * 명도 차이는 유지하고, 상태는 색뿐 아니라 형태로도 구분한다.
+ */
+
+:root {
+  --ink: #f4e9dc;
+  --ink-dim: #c3b2a0;
+  --muted: #8d7c6c;
+
+  --accent: #ffb85c;
+  --accent-soft: rgba(255, 184, 92, 0.18);
+  --goal: #7fe3d0;
+  --goal-glow: rgba(127, 227, 208, 0.34);
+  --danger: #e0715f;
+
+  --crate: #c0803f;
+  --crate-lit: #e0a457;
+  --crate-dark: #7e5227;
+  --crate-band: #5d4024;
+  --player-cloak: #c6564a;
+  --player-skin: #f2c9a0;
+  --apple: #e0553f;
+  --apple-dark: #9c3324;
+  --apple-leaf: #6fae5a;
+  --apple-glow: rgba(224, 85, 63, 0.4);
+
+  --move-duration: 150ms;
+  --move-ease: cubic-bezier(0.22, 0.68, 0.32, 1);
+
+  --radius: 14px;
+  --panel-line: rgba(255, 255, 255, 0.09);
+
+  color-scheme: dark;
+}
+
+/*
+ * 장비의 재료.
+ *
+ * 격자는 암벽·나무·램프빛으로 만들어진 세계인데 그 둘레의 UI만 반투명 유리면
+ * 두 세계가 따로 논다. 그래서 화면 장치도 광부가 들고 다니는 것과 같은 재료로
+ * 만든다. 주 표면은 궤짝과 같은 판자, 조작부는 두들긴 철판, 이음매는 리벳이다.
+ *
+ * 챕터가 깊어져도 이 셋은 변하지 않는다. 동굴은 내려갈수록 식지만 장비는
+ * 그대로라야, 색이 바뀌는 쪽이 "환경"이고 안 바뀌는 쪽이 "내 것"으로 읽힌다.
+ */
+:root {
+  /* 판자 — 궤짝과 같은 나무. 결은 27px 간격의 세로 홈으로 낸다. */
+  --plank-face:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.11) 0 1px, transparent 1px 27px),
+    linear-gradient(180deg, #4b3520, #33240f);
+  --plank-burnt:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 24px),
+    linear-gradient(180deg, #3a2917, #261a0b);
+  --plank-edge: inset 0 1px 0 rgba(255, 255, 255, 0.13), inset 0 -3px 0 rgba(0, 0, 0, 0.4);
+  --wood-ink: #ffe2b4;
+  --wood-ink-dim: #b08f62;
+
+  /* 철판 — 조작부. 위쪽 하이라이트와 아래쪽 그늘로 눌리는 면을 만든다. */
+  --iron-face: linear-gradient(180deg, #4a443d, #2c2823);
+  --iron-face-lit: linear-gradient(180deg, #5c5348, #332e28);
+  --iron-line: rgba(0, 0, 0, 0.6);
+  --iron-edge: inset 0 1px 0 rgba(255, 255, 255, 0.17), 0 1px 2px rgba(0, 0, 0, 0.5);
+
+  --rivet: #8e8477;
+}
+
+/*
+ * 챕터 팔레트.
+ *
+ * 벽은 바닥보다 확실히 밝게 잡는다. 분위기를 위해 둘을 비슷한 명도로 두면
+ * 횃불빛과 비네트가 얹히는 순간 구분이 뭉개져, 한눈에 길을 읽어야 하는
+ * 퍼즐로서는 실패다. 분위기보다 가독성이 먼저다.
+ */
+
+/* 얕은 동굴 — 따뜻한 흙빛 */
+.app[data-chapter='1'] {
+  --bg-deep: #120c09;
+  --bg: #1a120d;
+  --floor: #1d140e;
+  --floor-hi: #2a1e14;
+  --wall: #7a5c3c;
+  --wall-hi: #9c7852;
+  --wall-lo: #4a3623;
+}
+
+/* 중간층 갱도 — 습기 찬 회갈색 */
+.app[data-chapter='2'] {
+  --bg-deep: #0e0e0e;
+  --bg: #161615;
+  --floor: #1a1b19;
+  --floor-hi: #262722;
+  --wall: #6a655b;
+  --wall-hi: #8b8476;
+  --wall-lo: #403c35;
+}
+
+/* 심층 암굴 — 차갑고 깊은 청회색 */
+.app[data-chapter='3'] {
+  --bg-deep: #080b10;
+  --bg: #0f141b;
+  --floor: #141a24;
+  --floor-hi: #1e2734;
+  --wall: #52627c;
+  --wall-hi: #6e82a1;
+  --wall-lo: #313c4d;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-deep, #150f0c);
+  color: var(--ink);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    'Segoe UI', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* 스와이프로 조작하는 게임이라 화면이 딸려 움직이면 안 된다. */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 50% 0%, var(--bg), var(--bg-deep) 70%),
+    var(--bg-deep);
+  transition: background 400ms ease;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+h1,
+h2 {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- 낙인 ----------
+ *
+ * 궤짝 위 표식(마름모)과 같은 모양. 클리어·기록 경신처럼 "이 판은 끝났다"를
+ * 말하는 자리에만 쓴다. 색만으로 상태를 말하지 않기 위한 형태이기도 하다.
+ */
+
+.brand-mark {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  background: var(--goal);
+  box-shadow: 0 0 8px var(--goal-glow);
+  transform: rotate(45deg);
+}
+
+/* ---------- 버튼 ---------- */
+
+/*
+ * 기본 버튼은 철판이다. 반투명 흰 면 대신 위 하이라이트 · 아래 그늘 · 검은 테두리로
+ * 두께를 만든다. 눌렀을 때 하이라이트를 지우면 실제로 들어간 것처럼 읽힌다.
+ */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px 20px;
+  border: 1px solid var(--iron-line);
+  border-radius: 9px;
+  background: var(--iron-face);
+  box-shadow: var(--iron-edge);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--iron-face-lit);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+/* 주 버튼은 궤짝과 같은 나무다. 횃불색은 "지금 여기"를 짚는 데만 남겨 둔다. */
+.button--primary {
+  border-color: rgba(0, 0, 0, 0.55);
+  background: linear-gradient(180deg, var(--crate-lit), var(--crate) 55%, #8f5f2c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+  color: #2b1908;
+}
+
+.button--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #edb268, var(--crate-lit) 55%, #9c6931);
+}
+
+.button--ghost {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ink-dim);
+  font-weight: 500;
+}
+
+.button--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.button--danger {
+  background: linear-gradient(180deg, #5a3a34, #38221e);
+  border-color: rgba(224, 113, 95, 0.5);
+  color: #ffd2c8;
+}
+
+.button--danger:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6b453e, #422823);
+}
+
+.button__note {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.72;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid var(--iron-line);
+  border-radius: 8px;
+  background: var(--iron-face);
+  box-shadow: var(--iron-edge);
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.icon-button:hover {
+  background: var(--iron-face-lit);
+  color: var(--ink);
+}
+
+.icon-button:active {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* 켜진 상태는 램프가 들어온 것처럼. 철판 위에 놋쇠빛이 돈다. */
+.icon-button.is-active {
+  background: linear-gradient(180deg, #6a5330, #3d2e18);
+  border-color: rgba(0, 0, 0, 0.6);
+  color: var(--accent);
+}
+
+.icon-button svg,
+.button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:where(button, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 판 = 궤짝 뚜껑 한 장. 판자결에 리벳을 박는다. */
+.panel {
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  border-radius: 8px;
+  background: var(--plank-face);
+  box-shadow:
+    var(--plank-edge),
+    0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+/* 눈에는 안 보이지만 스크린 리더는 읽는 텍스트. 숫자만 있는 표시의 단위를 붙일 때 쓴다. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

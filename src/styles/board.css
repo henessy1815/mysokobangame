@@ -1,0 +1,431 @@
+/*
+ * 퍼즐 격자.
+ *
+ * 움직이는 것은 .entity(플레이어·상자)뿐이고, 이동은 transform 트랜지션 하나로
+ * 끝난다. 레이아웃을 건드리지 않으므로 합성 단계에서만 처리되어 저사양 기기에서도
+ * 60fps를 유지한다.
+ */
+
+.board {
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 22px 46px rgba(0, 0, 0, 0.55);
+  /* 격자 위에서 스와이프할 때 브라우저가 스크롤로 가로채지 않게 한다. */
+  touch-action: none;
+}
+
+.board__tiles {
+  display: grid;
+  grid-auto-rows: var(--cell);
+}
+
+.tile {
+  position: relative;
+  width: var(--cell);
+  height: var(--cell);
+}
+
+/* ---------- 바닥: 어두운 암석, 타일마다 조금씩 다른 결 ---------- */
+
+.tile--floor {
+  background-color: var(--floor);
+  background-image:
+    radial-gradient(
+      circle at calc(28% + var(--seed) * 44%) calc(22% + var(--seed) * 52%),
+      var(--floor-hi),
+      transparent 64%
+    ),
+    radial-gradient(circle at calc(82% - var(--seed) * 34%) 80%, rgba(0, 0, 0, 0.28), transparent 55%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+/* ---------- 벽: 울퉁불퉁한 암벽 ---------- */
+
+.tile--wall {
+  border-radius: 4px;
+  background-color: var(--wall);
+  background-image: linear-gradient(var(--tilt), var(--wall-hi) 0%, var(--wall) 46%, var(--wall-lo) 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.38),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.tile--wall::after {
+  content: '';
+  position: absolute;
+  inset: calc(10% + var(--seed) * 10%) 16% 42% calc(14% + var(--seed) * 12%);
+  border-radius: 46% 58% 42% 52%;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), transparent 72%);
+}
+
+/* ---------- 스프라이트 ---------- */
+
+.sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.sprite--goal {
+  padding: 7%;
+}
+
+.goal-halo {
+  fill: var(--goal-glow);
+  opacity: 0.45;
+  animation: goal-breathe 3.6s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.goal-ring {
+  fill: none;
+  stroke: var(--goal);
+  stroke-width: 2.2;
+  stroke-dasharray: 5 3.4;
+  opacity: 0.85;
+}
+
+.goal-mark {
+  fill: var(--goal);
+  opacity: 0.4;
+}
+
+.sprite--box {
+  padding: 2.5%;
+}
+
+.box-body {
+  fill: var(--crate-dark);
+}
+
+.box-face {
+  fill: var(--crate);
+}
+
+.box-planks path {
+  fill: none;
+  stroke: var(--crate-dark);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0.6;
+}
+
+.box-bands rect {
+  fill: var(--crate-band);
+}
+
+.box-edge {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 1.4;
+}
+
+.box-mark {
+  fill: var(--goal);
+}
+
+/* 목표에 올라간 상자는 색뿐 아니라 무늬(X → 마름모)와 테두리까지 달라진다. */
+.sprite--box.is-on-goal {
+  /*
+   * 지연(--move-duration)이 핵심이다. 상자는 목표 칸으로 미끄러지는 중이라,
+   * 지연 없이 바로 재생하면 "가면서 부푸는" 모양이 된다. 이동이 끝나는 순간에
+   * 맞춰 시작해야 비로소 "도착해서 쿵" 으로 읽힌다.
+   */
+  animation: box-settle 330ms var(--move-duration) cubic-bezier(0.34, 1.56, 0.5, 1);
+  /* 바닥에 닿아 눌리는 느낌을 주려면 기준점이 가운데가 아니라 아래여야 한다. */
+  transform-origin: 50% 88%;
+  filter: drop-shadow(0 0 5px var(--goal-glow));
+}
+
+.sprite--box.is-on-goal .box-face {
+  fill: var(--crate-lit);
+}
+
+.sprite--box.is-on-goal .box-edge {
+  stroke: var(--goal);
+  opacity: 0.75;
+  stroke-width: 1.8;
+}
+
+/* 사과 — 떨어질 때 한 번 튀어 오르고, 놓인 동안은 아주 약하게 숨 쉰다. */
+.sprite--apple {
+  padding: 14%;
+  animation: apple-drop 480ms cubic-bezier(0.3, 1.5, 0.5, 1);
+  transform-origin: 50% 85%;
+  filter: drop-shadow(0 0 6px var(--apple-glow));
+}
+
+.apple-shadow {
+  fill: rgba(0, 0, 0, 0.4);
+}
+
+.apple-body {
+  fill: var(--apple);
+  stroke: var(--apple-dark);
+  stroke-width: 1.2;
+}
+
+.apple-shine {
+  fill: rgba(255, 255, 255, 0.55);
+}
+
+.apple-stem {
+  fill: none;
+  stroke: #6b4526;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.apple-leaf {
+  fill: var(--apple-leaf);
+}
+
+/* ---------- 착지 파문 ---------- */
+
+.sprite--burst {
+  padding: 6%;
+}
+
+/*
+ * 세 겹 모두 --move-duration만큼 기다렸다 시작한다. fill-mode를 주지 않았으므로
+ * 기다리는 동안에는 아무 변형도 걸리지 않고, opacity 0으로 시작해 보이지 않는다.
+ */
+.burst-flash {
+  fill: var(--goal-glow);
+  transform-origin: center;
+  animation: goal-flash 400ms var(--move-duration) ease-out;
+  opacity: 0;
+}
+
+.burst-ring {
+  fill: none;
+  stroke: var(--goal);
+  stroke-width: 2.2;
+  transform-origin: center;
+  animation: goal-burst 520ms var(--move-duration) cubic-bezier(0.18, 0.72, 0.3, 1);
+  opacity: 0;
+}
+
+/* 두 번째 고리는 조금 늦게, 조금 얇게. 시차가 물결처럼 퍼지는 느낌을 만든다. */
+.burst-ring--late {
+  stroke-width: 1.3;
+  animation-delay: calc(var(--move-duration) + 90ms);
+  animation-duration: 460ms;
+}
+
+.sprite--player {
+  padding: 2%;
+}
+
+.player-shadow {
+  fill: rgba(0, 0, 0, 0.42);
+}
+
+.player-body {
+  fill: var(--player-cloak);
+}
+
+.player-strap {
+  fill: rgba(0, 0, 0, 0.22);
+}
+
+.player-head {
+  fill: var(--player-skin);
+}
+
+.player-helmet {
+  fill: #6f5a3c;
+}
+
+.player-brim {
+  fill: #8a6f4a;
+}
+
+.player-hair {
+  fill: #4b3826;
+}
+
+.player-face circle {
+  fill: #33241a;
+}
+
+.player-lamp {
+  fill: #fff4d4;
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+
+/* ---------- 움직이는 것들 ---------- */
+
+.entity {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--cell);
+  height: var(--cell);
+  transform: translate3d(calc(var(--c) * var(--cell)), calc(var(--r) * var(--cell)), 0);
+  transition: transform var(--move-duration) var(--move-ease);
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* 사과는 상자·플레이어 아래에 깔린다. 상자가 지나가도 격자가 어지럽지 않도록. */
+.entity--apple {
+  z-index: 1;
+}
+
+.entity--box {
+  z-index: 2;
+}
+
+/*
+ * 착지 파문. 상자보다는 위, 플레이어보다는 아래에 깔린다.
+ * z-index가 플레이어와 같지만 DOM 순서상 먼저 나오므로 플레이어가 위에 그려진다.
+ *
+ * transition을 끄는 이유: .entity는 위치 이동을 트랜지션으로 처리하는데, 파문은
+ * 나타난 그 자리에서 터지고 사라질 뿐 어디로도 움직이지 않는다.
+ */
+.entity--burst {
+  z-index: 3;
+  transition: none;
+}
+
+.entity--player {
+  z-index: 3;
+}
+
+.board__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 46%, transparent 46%, rgba(4, 3, 2, 0.42) 100%);
+}
+
+/* 헬멧 램프가 만드는 횃불빛. 플레이어를 따라 같은 트랜지션으로 흐른다. */
+.entity--torch {
+  z-index: 5;
+  mix-blend-mode: screen;
+}
+
+.torch__glow {
+  position: absolute;
+  inset: -175%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle closest-side,
+    rgba(255, 201, 133, 0.2),
+    rgba(255, 162, 78, 0.07) 42%,
+    transparent 70%
+  );
+  animation: torch-flicker 3.4s ease-in-out infinite;
+}
+
+/* 화면이 가려져 있는 동안은 불꽃 애니메이션을 멈춰 배터리를 아낀다. */
+body.is-hidden .torch__glow,
+body.is-hidden .goal-halo {
+  animation-play-state: paused;
+}
+
+.board.is-solved .board__vignette {
+  background: radial-gradient(circle at 50% 46%, transparent 62%, rgba(4, 3, 2, 0.26) 100%);
+  transition: background 500ms ease;
+}
+
+@keyframes torch-flicker {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  38% {
+    opacity: 0.86;
+    transform: scale(0.97);
+  }
+  64% {
+    opacity: 0.96;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes goal-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.04);
+  }
+}
+
+/* 도착 순간 납작 → 튀어오름 → 안착. 가로세로를 반대로 늘려야 무게감이 산다. */
+@keyframes box-settle {
+  0% {
+    transform: scale(1.12, 0.86);
+  }
+  30% {
+    transform: scale(0.94, 1.1);
+  }
+  62% {
+    transform: scale(1.03, 0.97);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+/* 칸 전체가 한 번 환해졌다 잦아든다. */
+@keyframes goal-flash {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  18% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+/* 고리가 바깥으로 퍼지며 옅어진다. */
+@keyframes goal-burst {
+  0% {
+    transform: scale(0.42);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+@keyframes apple-drop {
+  0% {
+    transform: translateY(-60%) scale(0.5);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(0) scale(1.15);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-8%) scale(0.96);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
