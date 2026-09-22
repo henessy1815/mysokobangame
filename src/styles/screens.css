@@ -22,6 +22,7 @@
 
 .title-art__glow {
   position: absolute;
+  pointer-events: none;
   width: 62%;
   aspect-ratio: 1;
   border-radius: 50%;
